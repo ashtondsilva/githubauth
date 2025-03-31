@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My GitHub Repos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .repo-info {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        .download-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            text-decoration: none;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>GitHub Repositories for {{ user }}</h1>
+    <ul>
+        {% for repo in repos %}
+            <li>
+                <div class="repo-info">
+                    <a href="{{ repo.html_url }}" target="_blank">{{ repo.name }}</a>
+                    ({{ 'Private' if repo.private else 'Public' }})
+                </div>
+                <a href="/download_repo/{{ repo.owner.login }}/{{ repo.name }}" class="download-btn">
+                    Download ZIP
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+    <br>
+    <a href="/">Back to Home</a> | <a href="/logout">Logout</a>
+</body>
+</html>
