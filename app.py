@@ -1,15 +1,27 @@
 import os
 import requests
 import datetime
-from flask import Flask, redirect, request, session, jsonify, render_template, send_file
+from flask import Flask, redirect, request, session, jsonify, render_template, send_file, flash
 import tempfile
 import shutil
 import zipfile
+import git
 from config import SQLALCHEMY_DATABASE_URI, SQLALCHEMY_TRACK_MODIFICATIONS
 from models import db, Token
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Secure random secret key
+
+# Repository directory for cloned repos
+REPO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'repos')
+
+# Create repos directory if it doesn't exist
+def ensure_repo_dir():
+    if not os.path.exists(REPO_DIR):
+        os.makedirs(REPO_DIR)
+
+# Ensure the repository directory exists when the app starts
+ensure_repo_dir()
 
 # SQLAlchemy configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
@@ -154,6 +166,55 @@ def download_repo(owner, repo_name):
     finally:
         # Clean up temporary directory
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+# Step 7.5: Clone Repository
+@app.route("/clone_repo/<owner>/<repo_name>")
+def clone_repo(owner, repo_name):
+    if "user" not in session:
+        return redirect("/login")
+    
+    username = session["user"]
+    # Try to get token from database first
+    token = Token.get_valid_token(username)
+    
+    # If no valid token in database, redirect to login
+    if not token:
+        if "access_token" not in session:
+            return redirect("/login")
+        access_token = session["access_token"]
+    else:
+        access_token = token.access_token
+    
+    # Ensure repository directory exists
+    ensure_repo_dir()
+    
+    # Define repository URL with authentication
+    repo_url = f"https://x-access-token:{access_token}@github.com/{owner}/{repo_name}.git"
+    
+    # Define target directory for the clone
+    clone_dir = os.path.join(REPO_DIR, f"{owner}_{repo_name}")
+    
+    try:
+        # Remove directory if it already exists
+        if os.path.exists(clone_dir):
+            shutil.rmtree(clone_dir)
+        
+        # Clone the repository
+        git.Repo.clone_from(repo_url, clone_dir)
+        
+        return render_template("repos.html", 
+                           user=username, 
+                           repos=requests.get("https://api.github.com/user/repos", 
+                                           headers={"Authorization": f"token {access_token}"}).json(),
+                           message=f"Repository {owner}/{repo_name} successfully cloned to server!")
+    
+    except Exception as e:
+        error_message = f"Error cloning repository: {str(e)}"
+        return render_template("repos.html", 
+                           user=username, 
+                           repos=requests.get("https://api.github.com/user/repos", 
+                                           headers={"Authorization": f"token {access_token}"}).json(),
+                           error=error_message)
 
 # Step 8: Logout
 @app.route("/logout")
