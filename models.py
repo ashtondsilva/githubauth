@@ -1,30 +1,44 @@
-from flask_sqlalchemy import SQLAlchemy
-import datetime
+from datetime import datetime
+from typing import Optional
+from sqlalchemy import Column, Integer, String, DateTime, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
 
-db = SQLAlchemy()
+from config import SQLALCHEMY_DATABASE_URI
 
-class Token(db.Model):
+# Create SQLAlchemy engine and session
+engine = create_engine(SQLALCHEMY_DATABASE_URI)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create declarative base
+Base = declarative_base()
+
+class Token(Base):
     __tablename__ = 'tokens'
     
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String, nullable=False)
-    access_token = db.Column(db.String, nullable=False)
-    token_type = db.Column(db.String)
-    scope = db.Column(db.String)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.now)
-    expires_at = db.Column(db.DateTime)
-    refresh_token = db.Column(db.String)
+    id = Column(Integer, primary_key=True)
+    username = Column(String, nullable=False)
+    access_token = Column(String, nullable=False)
+    token_type = Column(String)
+    scope = Column(String)
+    created_at = Column(DateTime, default=datetime.now)
+    expires_at = Column(DateTime)
+    refresh_token = Column(String)
     
-    def is_expired(self):
+    def is_expired(self) -> bool:
         """Check if the token is expired"""
         if not self.expires_at:
             return True
-        return datetime.datetime.now() > self.expires_at
-    
-    @classmethod
-    def get_valid_token(cls, username):
-        """Get a valid token for a user"""
-        token = cls.query.filter_by(username=username).order_by(cls.created_at.desc()).first()
-        if token and not token.is_expired():
-            return token
-        return None
+        return datetime.now() > self.expires_at
+
+# Database Dependency
+def get_db() -> Session:
+    """Dependency for getting database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Create all tables
+Base.metadata.create_all(bind=engine)

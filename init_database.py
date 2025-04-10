@@ -1,7 +1,7 @@
 import sqlalchemy
 from sqlalchemy import create_engine
-from config import SQLALCHEMY_DATABASE_URI
-from models import db, Token
+from config import SQLALCHEMY_DATABASE_URI, DB_NAME
+from models import Base
 
 def create_database():
     # Create a temporary engine to connect to 'postgres' database
@@ -23,20 +23,10 @@ def create_database():
             print(f"Database {DB_NAME} already exists.")
     
     # Now connect to our database and create tables using SQLAlchemy models
-    from flask import Flask
-    
-    app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
-    db.init_app(app)
-    
-    with app.app_context():
-        db.create_all()
-        print("Database tables created successfully!")
-    
+    engine = create_engine(SQLALCHEMY_DATABASE_URI)
+    Base.metadata.create_all(bind=engine)
+    print("Database tables created successfully!")
     print("Database initialization complete!")
 
 if __name__ == "__main__":
-    from config import DB_NAME
     create_database()
